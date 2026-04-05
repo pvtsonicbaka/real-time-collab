@@ -137,11 +137,21 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({
-      message: "Login successful",
-      accessToken,
-      refreshToken,
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.json({ message: "Login successful" });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -174,7 +184,7 @@ router.post("/login", async (req, res) => {
  */
 router.post("/logout", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ message: "No token provided" });
@@ -183,6 +193,9 @@ router.post("/logout", async (req, res) => {
     await redisClient.set(refreshToken, "blacklisted", {
       EX: 60 * 60 * 24 * 7,
     });
+
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
 
     res.json({ message: "Logged out successfully" });
   } catch (err) {
@@ -222,9 +235,46 @@ router.post("/logout", async (req, res) => {
  *       403:
  *         description: Token is blacklisted or invalid
  */
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Get current logged-in user
+ *     tags: [Auth]
+ *     responses:
+ *       200:
+ *         description: Current user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Not authenticated
+ */
+router.get("/me", async (req: any, res) => {
+  try {
+    const token = req.cookies?.accessToken;
+
+    if (!token) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+    const user = await User.findById(decoded.id).select("-password");
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch {
+    res.status(401).json({ message: "Invalid token" });
+  }
+});
+
 router.post("/refresh", async (req, res) => {
   try {
-    const { refreshToken } = req.body;
+    const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
       return res.status(401).json({ message: "No refresh token" });
@@ -247,7 +297,14 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: "15m" }
     );
 
-    res.json({ accessToken: newAccessToken });
+    res.cookie("accessToken", newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.json({ message: "Token refreshed" });
   } catch (err) {
     return res.status(403).json({ message: "Invalid refresh token" });
   }

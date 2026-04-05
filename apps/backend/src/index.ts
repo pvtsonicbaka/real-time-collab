@@ -9,13 +9,20 @@ import { setupSocket } from "./sockets/socket";
 import { Server } from "socket.io";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 
 connectDB(); // 👈 THIS IS IMPORTANT
-app.use(express.json()); // IMPORTANT
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
 
 app.use("/api/auth", authRoutes); // THIS LINE
 app.use("/api/documents", documentRoutes);

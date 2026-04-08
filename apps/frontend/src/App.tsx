@@ -5,6 +5,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import EditorPage from "./pages/EditorPage";
 
 function App() {
   const fetchMe = useAuthStore((state) => state.fetchMe);
@@ -24,6 +25,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/editor/:id"
+        element={
+          <ProtectedRoute>
+            <EditorPage />
           </ProtectedRoute>
         }
       />

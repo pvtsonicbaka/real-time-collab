@@ -38,10 +38,11 @@ const router: Router = express.Router();
  */
 router.post("/", protect, async (req: any, res) => {
   try {
-    const { title } = req.body;
+    const { title, content } = req.body;
 
     const doc = await Document.create({
       title,
+      content: content || "",
       owner: req.user,
     });
 
@@ -51,35 +52,42 @@ router.post("/", protect, async (req: any, res) => {
   }
 });
 
-/**
- * @swagger
- * /api/documents:
- *   get:
- *     summary: Get all documents for the logged-in user
- *     tags: [Documents]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of documents
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Document'
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Error fetching documents
- */
+// GET BY ID
+router.get("/:id", protect, async (req: any, res) => {
+  try {
+    const doc = await Document.findById(req.params.id);
+
+    if (!doc) return res.status(404).json({ message: "Not found" });
+
+    if (doc.owner.toString() !== req.user && !doc.collaborators.includes(req.user)) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    res.json(doc);
+  } catch {
+    res.status(500).json({ message: "Error fetching document" });
+  }
+});
+
 router.get("/", protect, async (req: any, res) => {
   try {
-    const docs = await Document.find({
-      $or: [{ owner: req.user }, { collaborators: req.user }],
-    });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
 
-    res.json(docs);
+    const filter = { $or: [{ owner: req.user }, { collaborators: req.user }] };
+
+    const [docs, total] = await Promise.all([   //promise just to save some time !!!!!!
+      Document.find(filter).sort({ updatedAt: -1 }).skip(skip).limit(limit),
+      Document.countDocuments(filter),
+    ]);
+
+    res.json({
+      docs,
+      total,
+      page,
+      hasMore: skip + docs.length < total,
+    });
   } catch {
     res.status(500).json({ message: "Error fetching documents" });
   }

@@ -1,5 +1,6 @@
 import express, { Router } from "express";
 import { Document } from "../models/Document";
+import { User } from "../models/User";
 import { protect } from "../middleware/auth";
 import { isOwner } from "../middleware/ownership";
 
@@ -52,20 +53,62 @@ router.post("/", protect, async (req: any, res) => {
   }
 });
 
-// GET BY ID
+// GET BY ID — only owner or collaborator
 router.get("/:id", protect, async (req: any, res) => {
   try {
-    const doc = await Document.findById(req.params.id);
-
+    const doc = await Document.findById(req.params.id).populate("collaborators", "name email cursorColor");
     if (!doc) return res.status(404).json({ message: "Not found" });
 
-    if (doc.owner.toString() !== req.user && !doc.collaborators.includes(req.user)) {
+    const isOwner = doc.owner.toString() === req.user;
+    const isCollaborator = doc.collaborators.map((c: any) => c._id.toString()).includes(req.user);
+
+    if (!isOwner && !isCollaborator) {
       return res.status(403).json({ message: "Not allowed" });
     }
 
     res.json(doc);
   } catch {
     res.status(500).json({ message: "Error fetching document" });
+  }
+});
+
+// INVITE COLLABORATOR by email
+router.post("/:id/invite", protect, async (req: any, res) => {
+  try {
+    const doc = await Document.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: "Not found" });
+    if (doc.owner.toString() !== req.user) return res.status(403).json({ message: "Only owner can invite" });
+
+    const { email } = req.body;
+    const invitee = await User.findOne({ email });
+    if (!invitee) return res.status(404).json({ message: "User not found" });
+    if (doc.owner.toString() === invitee._id.toString()) return res.status(400).json({ message: "Owner cannot be added as collaborator" });
+    if (doc.collaborators.map(String).includes(invitee._id.toString())) return res.status(400).json({ message: "Already a collaborator" });
+
+    doc.collaborators.push(invitee._id);
+    await doc.save();
+
+    const updated = await Document.findById(doc._id).populate("collaborators", "name email cursorColor");
+    res.json(updated);
+  } catch {
+    res.status(500).json({ message: "Error inviting collaborator" });
+  }
+});
+
+// REMOVE COLLABORATOR
+router.delete("/:id/collaborator/:userId", protect, async (req: any, res) => {
+  try {
+    const doc = await Document.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: "Not found" });
+    if (doc.owner.toString() !== req.user) return res.status(403).json({ message: "Only owner can remove" });
+
+    doc.collaborators = doc.collaborators.filter((c) => c.toString() !== req.params.userId) as any;
+    await doc.save();
+
+    const updated = await Document.findById(doc._id).populate("collaborators", "name email cursorColor");
+    res.json(updated);
+  } catch {
+    res.status(500).json({ message: "Error removing collaborator" });
   }
 });
 

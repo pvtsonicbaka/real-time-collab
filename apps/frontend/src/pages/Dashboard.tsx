@@ -45,7 +45,7 @@ export default function Dashboard() {
             <span style={s.brandName}>CollabDocs</span>
           </div>
 
-          <div style={s.userBox}>
+          <div style={s.userBox} onClick={() => navigate("/profile")} title="Edit Profile">
             <div style={s.avatar}>{user?.name?.[0]?.toUpperCase()}</div>
             <div style={s.userInfo}>
               <p style={s.userName}>{user?.name}</p>
@@ -155,16 +155,12 @@ export default function Dashboard() {
                   <div style={s.cardFooter}>
                     <span style={s.wordCount}>{wordCount} words</span>
                     <div style={s.cardActions}>
-                      <button
-                        style={s.deleteBtn}
-                        onClick={() => handleDelete(doc._id)}
-                      >
-                        Delete
-                      </button>
-                      <button
-                        style={s.openBtn}
-                        onClick={() => navigate(`/editor/${doc._id}`)}
-                      >
+                      {doc.owner === user?._id && (
+                        <button style={s.deleteBtn} onClick={() => handleDelete(doc._id)}>
+                          Delete
+                        </button>
+                      )}
+                      <button style={s.openBtn} onClick={() => navigate(`/editor/${doc._id}`)}>
                         Open →
                       </button>
                     </div>
@@ -195,7 +191,7 @@ const s: Record<string, React.CSSProperties> = {
   brand: { display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" },
   brandLogo: { width: "32px", height: "32px", borderRadius: "8px", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 700 },
   brandName: { fontSize: "17px", fontWeight: 700, color: "var(--text-h)", letterSpacing: "-0.3px" },
-  userBox: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", borderRadius: "8px", background: "var(--bg-subtle)", border: "1px solid var(--border)" },
+  userBox: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", borderRadius: "8px", background: "var(--bg-subtle)", border: "1px solid var(--border)", cursor: "pointer" },
   avatar: { width: "34px", height: "34px", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 700, flexShrink: 0 },
   userInfo: { overflow: "hidden" },
   userName: { margin: 0, fontSize: "12px", fontWeight: 600, color: "var(--text-h)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },

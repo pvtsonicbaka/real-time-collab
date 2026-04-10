@@ -272,6 +272,27 @@ router.get("/me", async (req: any, res) => {
   }
 });
 
+// UPDATE PROFILE
+router.put("/profile", async (req: any, res) => {
+  try {
+    const token = req.cookies?.accessToken;
+    if (!token) return res.status(401).json({ message: "Not authenticated" });
+
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+    const { name, cursorColor } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      decoded.id,
+      { ...(name && { name }), ...(cursorColor && { cursorColor }) },
+      { new: true }
+    ).select("-password");
+
+    res.json(user);
+  } catch {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 router.post("/refresh", async (req, res) => {
   try {
     const refreshToken = req.cookies?.refreshToken;

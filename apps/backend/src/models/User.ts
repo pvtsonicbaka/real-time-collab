@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
 
     avatar: { type: String, default: "" },
 
+    cursorColor: { type: String, default: "#6366f1" },
+
     role: {
       type: String,
       enum: ["user", "admin"],

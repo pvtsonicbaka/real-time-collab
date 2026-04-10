@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import EditorPage from "./pages/EditorPage";
+import Profile from "./pages/Profile";
 
 function App() {
   const fetchMe = useAuthStore((state) => state.fetchMe);
@@ -33,6 +34,14 @@ function App() {
         element={
           <ProtectedRoute>
             <EditorPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

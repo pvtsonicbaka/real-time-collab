@@ -5,6 +5,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  cursorColor: string;
 }
 
 interface AuthState {
@@ -14,6 +15,7 @@ interface AuthState {
   setAuth: (user: User) => void;
   logout: () => void;
   fetchMe: () => Promise<void>;
+  updateProfile: (data: { name?: string; cursorColor?: string }) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -36,7 +38,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       const res = await fetch("http://localhost:5000/api/auth/me", {
         credentials: "include",
       });
-
       if (res.ok) {
         const user = await res.json();
         set({ user, isAuthenticated: true, isLoading: false });
@@ -45,6 +46,19 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     } catch {
       set({ user: null, isAuthenticated: false, isLoading: false });
+    }
+  },
+
+  updateProfile: async (data) => {
+    const res = await fetch("http://localhost:5000/api/auth/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (res.ok) {
+      const user = await res.json();
+      set({ user });
     }
   },
 }));

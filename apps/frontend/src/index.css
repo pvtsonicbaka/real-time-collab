@@ -277,6 +277,12 @@ code {
   color: var(--text-h);
 }
 
+/* ── CURSOR BLINK ── */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ── TIPTAP ── */
 .tiptap { outline: none; }
 .tiptap p { margin: 0 0 8px; }

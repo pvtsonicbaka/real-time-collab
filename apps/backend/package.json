@@ -7,7 +7,7 @@
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc --outDir dist",
     "start": "node dist/index.js",
-    "lint": "eslint src --max-warnings 0",
+    "lint": "eslint src",
     "seed": "ts-node src/scripts/seed.ts"
   },
   "keywords": [],

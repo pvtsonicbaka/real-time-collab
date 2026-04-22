@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { API_URL } from "../utils/api";
 
 export default function InvitePage() {
   const [params] = useSearchParams();
@@ -29,7 +30,7 @@ export default function InvitePage() {
 
   const accept = async (t: string) => {
     try {
-      const res = await fetch("http://localhost:5000/api/documents/invite/accept", {
+      const res = await fetch(`${API_URL}/api/documents/invite/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

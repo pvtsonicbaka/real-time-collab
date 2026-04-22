@@ -9,6 +9,7 @@ import CommentsPanel, { type Comment } from "../components/CommentsPanel";
 import GuestUpgradeModal from "../components/GuestUpgradeModal";
 import { useAuthStore } from "../store/authStore";
 import { colorFromId } from "../utils/color";
+import { API_URL, SOCKET_URL } from "../utils/api";
 
 interface Collaborator {
   userId: { _id: string; name: string; email: string } | string;
@@ -85,7 +86,7 @@ export default function EditorPage() {
   // Step 1: fetch doc
   useEffect(() => {
     if (!id) return;
-    fetch(`http://localhost:5000/api/documents/${id}`, { credentials: "include" })
+    fetch(`${API_URL}/api/documents/${id}`, { credentials: "include" })
       .then((res) => {
         if (res.status === 403) { setAccessState("pending"); return null; }
         if (!res.ok) { navigate("/dashboard"); return null; }
@@ -102,7 +103,7 @@ export default function EditorPage() {
   // Step 2: socket setup
   useEffect(() => {
     if (!id) return;
-    const socket = io("http://localhost:5000", {
+    const socket = io(SOCKET_URL, {
       withCredentials: true,
       reconnection: true,
       reconnectionDelay: 5000,
@@ -170,7 +171,7 @@ export default function EditorPage() {
     socket.on("access-approved", ({ state }: { state: string; role: "editor" | "viewer" }) => {
       Y.applyUpdate(ydocRef.current, Uint8Array.from(atob(state), (c) => c.charCodeAt(0)));
       setSynced(true);
-      fetch(`http://localhost:5000/api/documents/${id}`, { credentials: "include" })
+      fetch(`${API_URL}/api/documents/${id}`, { credentials: "include" })
         .then((res) => res.json())
         .then((data) => {
           setDoc(data);
@@ -328,7 +329,7 @@ export default function EditorPage() {
 
   const handleRestore = async (version: Version) => {
     if (!window.confirm("Restore this version? Your current content will be saved as a snapshot first.")) return;
-    await fetch(`http://localhost:5000/api/documents/${id}/versions/${version._id}/restore`, {
+    await fetch(`${API_URL}/api/documents/${id}/versions/${version._id}/restore`, {
       method: "POST",
       credentials: "include",
     });
@@ -339,7 +340,7 @@ export default function EditorPage() {
   // comments
   useEffect(() => {
     if (!id || accessState === "loading" || accessState === "pending" || accessState === "waiting" || accessState === "denied") return;
-    fetch(`http://localhost:5000/api/documents/${id}/comments`, { credentials: "include" })
+    fetch(`${API_URL}/api/documents/${id}/comments`, { credentials: "include" })
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setComments(data); });
   }, [id, accessState]);
@@ -347,7 +348,7 @@ export default function EditorPage() {
   const handleAddComment = async (body: string, anchorText: string) => {
     const { from, to, text } = selectionRef.current;
     const resolvedAnchor = anchorText || text;
-    const res = await fetch(`http://localhost:5000/api/documents/${id}/comments`, {
+    const res = await fetch(`${API_URL}/api/documents/${id}/comments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -361,7 +362,7 @@ export default function EditorPage() {
   };
 
   const handleReply = async (commentId: string, body: string) => {
-    await fetch(`http://localhost:5000/api/documents/${id}/comments/${commentId}/reply`, {
+    await fetch(`${API_URL}/api/documents/${id}/comments/${commentId}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -371,7 +372,7 @@ export default function EditorPage() {
   };
 
   const handleResolve = async (commentId: string) => {
-    const res = await fetch(`http://localhost:5000/api/documents/${id}/comments/${commentId}/resolve`, {
+    const res = await fetch(`${API_URL}/api/documents/${id}/comments/${commentId}/resolve`, {
       method: "PATCH", credentials: "include",
     });
     if (res.ok) removeCommentMark(commentId);
@@ -379,14 +380,14 @@ export default function EditorPage() {
   };
 
   const handleReopen = async (commentId: string) => {
-    await fetch(`http://localhost:5000/api/documents/${id}/comments/${commentId}/reopen`, {
+    await fetch(`${API_URL}/api/documents/${id}/comments/${commentId}/reopen`, {
       method: "PATCH", credentials: "include",
     });
     // socket comment-updated handles state
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    const res = await fetch(`http://localhost:5000/api/documents/${id}/comments/${commentId}`, {
+    const res = await fetch(`${API_URL}/api/documents/${id}/comments/${commentId}`, {
       method: "DELETE", credentials: "include",
     });
     if (res.ok) removeCommentMark(commentId);
@@ -399,7 +400,7 @@ export default function EditorPage() {
 
   const saveContent = useCallback(async (content: string) => {
     setSaving(true); setSaved(false);
-    await fetch(`http://localhost:5000/api/documents/${id}`, {
+    await fetch(`${API_URL}/api/documents/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

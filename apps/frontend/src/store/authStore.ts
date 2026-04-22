@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { API_URL } from "../utils/api";
 
 interface User {
   _id: string;
@@ -27,7 +28,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAuth: (user) => set({ user, isAuthenticated: true }),
 
   logout: async () => {
-    await fetch("http://localhost:5000/api/auth/logout", {
+    await fetch(`${API_URL}/api/auth/logout`, {
       method: "POST",
       credentials: "include",
     });
@@ -36,7 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   fetchMe: async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/auth/me", {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
         credentials: "include",
       });
       if (res.ok) {
@@ -51,7 +52,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   updateProfile: async (data) => {
-    const res = await fetch("http://localhost:5000/api/auth/profile", {
+    const res = await fetch(`${API_URL}/api/auth/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

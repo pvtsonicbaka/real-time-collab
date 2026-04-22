@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { API_URL } from "../utils/api";
 
 export interface Doc {
   _id: string;
@@ -9,7 +10,7 @@ export interface Doc {
   updatedAt: string;
 }
 
-const API = "http://localhost:5000/api/documents";
+const API = `${API_URL}/api/documents`;
 
 export function useDocuments(search = "") {
   const [docs, setDocs] = useState<Doc[]>([]);

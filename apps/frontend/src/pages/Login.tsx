@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { API_URL } from "../utils/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,7 +15,7 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -26,7 +27,7 @@ export default function Login() {
         setLoading(false);
         return;
       }
-      const meRes = await fetch("http://localhost:5000/api/auth/me", { credentials: "include" });
+      const meRes = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
       const user = await meRes.json();
       setAuth(user);
       const inviteToken = sessionStorage.getItem("inviteToken");
@@ -51,12 +52,12 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("http://localhost:5000/api/auth/guest", {
+      const res = await fetch(`${API_URL}/api/auth/guest`, {
         method: "POST",
         credentials: "include",
       });
       if (!res.ok) { setError("Failed to start guest session"); setLoading(false); return; }
-      const meRes = await fetch("http://localhost:5000/api/auth/me", { credentials: "include" });
+      const meRes = await fetch(`${API_URL}/api/auth/me`, { credentials: "include" });
       const user = await meRes.json();
       setAuth(user);
       navigate("/dashboard");

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Doc } from "../hooks/useDocuments";
+import { API_URL } from "../utils/api";
 
 interface Props {
   onClose: () => void;
@@ -27,7 +28,7 @@ export default function CreateDocModal({ onClose, onCreated }: Props) {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/documents", {
+      const res = await fetch(`${API_URL}/api/documents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_URL } from "../utils/api";
 
 export interface Version {
   _id: string;
@@ -43,14 +44,14 @@ export default function VersionHistory({ docId, isOwner, canSave, onPreview, onR
   const [showLabelInput, setShowLabelInput] = useState(false);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/documents/${docId}/versions`, { credentials: "include" })
+    fetch(`${API_URL}/api/documents/${docId}/versions`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) => { setVersions(data); setLoading(false); });
   }, [docId]);
 
   const handleManualSave = async () => {
     setSaving(true);
-    const res = await fetch(`http://localhost:5000/api/documents/${docId}/versions`, {
+    const res = await fetch(`${API_URL}/api/documents/${docId}/versions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

@@ -4,6 +4,7 @@ import { useAuthStore } from "../store/authStore";
 import { useDocuments } from "../hooks/useDocuments";
 import { useThemeStore, themes, type Theme } from "../store/themeStore";
 import CreateDocModal from "../components/CreateDocModal";
+import { API_URL } from "../utils/api";
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
@@ -45,7 +46,7 @@ export default function Dashboard() {
   }, [hasMore, loading]);
 
   const handleDelete = async (id: string) => {
-    await fetch(`http://localhost:5000/api/documents/${id}`, {
+    await fetch(`${API_URL}/api/documents/${id}`, {
       method: "DELETE",
       credentials: "include",
     });

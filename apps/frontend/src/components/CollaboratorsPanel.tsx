@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { colorFromId } from "../utils/color";
+import { API_URL } from "../utils/api";
 
 interface Collaborator {
   userId: { _id: string; name: string; email: string } | string;
@@ -37,7 +38,7 @@ export default function CollaboratorsPanel({ docId, collaborators, pendingReques
     if (!inviteEmail.trim()) return;
     setInviteStatus("sending");
     try {
-      const res = await fetch(`http://localhost:5000/api/documents/${docId}/invite`, {
+      const res = await fetch(`${API_URL}/api/documents/${docId}/invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -60,7 +61,7 @@ export default function CollaboratorsPanel({ docId, collaborators, pendingReques
   const handleRemove = async (userId: string) => {
     const onlineEntry = onlineUsers.find((u) => u.userId === userId && u.socketId !== "me");
     if (onlineEntry) onKick(onlineEntry.socketId);
-    const res = await fetch(`http://localhost:5000/api/documents/${docId}/collaborator/${userId}`, {
+    const res = await fetch(`${API_URL}/api/documents/${docId}/collaborator/${userId}`, {
       method: "DELETE", credentials: "include",
     });
     const data = await res.json();
@@ -68,7 +69,7 @@ export default function CollaboratorsPanel({ docId, collaborators, pendingReques
   };
 
   const handleRoleChange = async (userId: string, role: "editor" | "viewer") => {
-    const res = await fetch(`http://localhost:5000/api/documents/${docId}/collaborator/${userId}`, {
+    const res = await fetch(`${API_URL}/api/documents/${docId}/collaborator/${userId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",

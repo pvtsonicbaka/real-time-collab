@@ -7,12 +7,31 @@ import CreateDocModal from "../components/CreateDocModal";
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
-  const { docs, loading, hasMore, loadMore, addDoc, removeDoc } = useDocuments();
   const { theme, setTheme } = useThemeStore();
   const [showModal, setShowModal] = useState(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [restoredBanner, setRestoredBanner] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { docs, loading, hasMore, loadMore, addDoc, removeDoc } = useDocuments(search);
   const loaderRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const handleSearchChange = (val: string) => {
+    setSearchInput(val);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => setSearch(val), 400);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("restored") === "1") {
+      setRestoredBanner(true);
+      window.history.replaceState({}, "", "/dashboard");
+      setTimeout(() => setRestoredBanner(false), 5000);
+    }
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -93,26 +112,41 @@ export default function Dashboard() {
 
       {/* Main */}
       <main style={s.main}>
+        {restoredBanner && (
+          <div style={s.restoredBanner}>
+            🔄 The document was restored to a previous version. You can reopen it below.
+          </div>
+        )}
         <div style={s.topBar}>
           <div>
             <h2 style={s.pageTitle}>All Documents</h2>
             <p style={s.pageSubtitle}>
-              {docs.length} document{docs.length !== 1 ? "s" : ""}
+              {search ? `Results for "${search}"` : `${docs.length} document${docs.length !== 1 ? "s" : ""}`}
             </p>
           </div>
-          <button style={s.newBtn} onClick={() => setShowModal(true)}>
-            + New Document
-          </button>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <div style={s.searchBox}>
+              <span style={s.searchIcon}>🔍</span>
+              <input
+                style={s.searchInput}
+                placeholder="Search documents..."
+                value={searchInput}
+                onChange={(e) => handleSearchChange(e.target.value)}
+              />
+              {searchInput && (
+                <button style={s.searchClear} onClick={() => { setSearchInput(""); setSearch(""); }}>✕</button>
+              )}
+            </div>
+            <button style={s.newBtn} onClick={() => setShowModal(true)}>+ New Document</button>
+          </div>
         </div>
 
         {docs.length === 0 && !loading ? (
           <div style={s.emptyState}>
-            <div style={s.emptyIcon}>📄</div>
-            <p style={s.emptyTitle}>No documents yet</p>
-            <p style={s.emptySubtitle}>Create your first document to get started</p>
-            <button style={s.newBtn} onClick={() => setShowModal(true)}>
-              + New Document
-            </button>
+            <div style={s.emptyIcon}>{search ? "🔍" : "📄"}</div>
+            <p style={s.emptyTitle}>{search ? `No results for "${search}"` : "No documents yet"}</p>
+            <p style={s.emptySubtitle}>{search ? "Try a different search term" : "Create your first document to get started"}</p>
+            {!search && <button style={s.newBtn} onClick={() => setShowModal(true)}>+ New Document</button>}
           </div>
         ) : (
           <div style={s.grid}>
@@ -239,4 +273,9 @@ const s: Record<string, React.CSSProperties> = {
   deleteBtn: { padding: "5px 14px", borderRadius: "6px", border: "1px solid var(--border)", background: "transparent", color: "var(--text)", cursor: "pointer", fontSize: "13px", fontFamily: "var(--sans)" },
 
   loadingText: { textAlign: "center", color: "var(--text)", fontSize: "13px", marginTop: "16px" },
+  restoredBanner: { background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a", borderRadius: "8px", padding: "10px 16px", fontSize: "13px", marginBottom: "16px" },
+  searchBox: { display: "flex", alignItems: "center", gap: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "8px", padding: "6px 10px", width: "220px" },
+  searchIcon: { fontSize: "13px", flexShrink: 0 },
+  searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", color: "var(--text-h)", fontSize: "13px", fontFamily: "var(--sans)" },
+  searchClear: { background: "transparent", border: "none", cursor: "pointer", color: "var(--text)", fontSize: "13px", padding: 0, flexShrink: 0 },
 };

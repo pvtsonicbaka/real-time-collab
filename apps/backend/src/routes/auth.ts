@@ -1,8 +1,9 @@
 import express, { Router } from "express";
-import { User } from "../models/User";
+import { User, GUEST_TTL_SECONDS } from "../models/User";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { redisClient } from "../config/redis";
+import { sanitizeText } from "../utils/sanitize";
 
 const router: Router = express.Router();
 
@@ -49,19 +50,14 @@ const router: Router = express.Router();
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    const cleanName = sanitizeText(name || "");
+    if (!cleanName) return res.status(400).json({ message: "Name is required" });
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+    if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-    });
+    const user = await User.create({ name: cleanName, email, password: hashedPassword });
 
     res.status(201).json({
       message: "User created",
@@ -280,10 +276,11 @@ router.put("/profile", async (req: any, res) => {
 
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
     const { name, cursorColor } = req.body;
+    const cleanName = name ? sanitizeText(name) : undefined;
 
     const user = await User.findByIdAndUpdate(
       decoded.id,
-      { ...(name && { name }), ...(cursorColor && { cursorColor }) },
+      { ...(cleanName && { name: cleanName }), ...(cursorColor && { cursorColor }) },
       { new: true }
     ).select("-password");
 
@@ -328,6 +325,47 @@ router.post("/refresh", async (req, res) => {
     res.json({ message: "Token refreshed" });
   } catch (err) {
     return res.status(403).json({ message: "Invalid refresh token" });
+  }
+});
+
+// GUEST LOGIN — no email/password needed, creates a temp user
+router.post("/guest", async (req, res) => {
+  try {
+    const adjectives = ["Cool", "Fast", "Bright", "Swift", "Bold", "Calm", "Keen", "Wise"];
+    const nouns = ["Panda", "Tiger", "Eagle", "Shark", "Wolf", "Fox", "Bear", "Hawk"];
+    const rand = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+    const guestName = `${rand(adjectives)} ${rand(nouns)}`;
+    const guestEmail = `guest_${Date.now()}_${Math.random().toString(36).slice(2)}@guest.collabdocs.dev`;
+    const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
+
+    const user = await User.create({
+      name: guestName,
+      email: guestEmail,
+      password: hashedPassword,
+      cursorColor: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
+      isGuest: true,
+      expiresAt: new Date(Date.now() + GUEST_TTL_SECONDS * 1000),
+    });
+
+    const accessToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "2h" });
+    const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET as string, { expiresIn: "2h" });
+
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 2 * 60 * 60 * 1000,
+    });
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 2 * 60 * 60 * 1000,
+    });
+
+    res.json({ message: "Guest session created", name: guestName });
+  } catch {
+    res.status(500).json({ message: "Server error" });
   }
 });
 

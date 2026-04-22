@@ -283,7 +283,19 @@ code {
   50% { opacity: 0; }
 }
 
-/* ── TIPTAP ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+/* ── COMMENT MARKS ── */
+.comment-mark {
+  border-radius: 2px;
+  cursor: pointer;
+  will-change: background;
+  transition: background 0.1s;
+}
+
 .tiptap { outline: none; }
 .tiptap p { margin: 0 0 8px; }
 .tiptap h1 { font-size: 28px; margin: 0 0 12px; }

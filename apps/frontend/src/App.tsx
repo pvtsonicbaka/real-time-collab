@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import EditorPage from "./pages/EditorPage";
 import Profile from "./pages/Profile";
+import InvitePage from "./pages/InvitePage";
 
 function App() {
   const fetchMe = useAuthStore((state) => state.fetchMe);
@@ -45,6 +46,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/invite" element={<InvitePage />} />
     </Routes>
   );
 }

@@ -6,6 +6,7 @@ interface User {
   email: string;
   role: string;
   cursorColor: string;
+  isGuest?: boolean;
 }
 
 interface AuthState {

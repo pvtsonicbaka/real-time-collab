@@ -1,0 +1,169 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BACKEND: ${{ github.repository_owner }}/collabdocs-backend
+  IMAGE_FRONTEND: ${{ github.repository_owner }}/collabdocs-frontend
+
+jobs:
+  # ── Job 1: Lint ────────────────────────────────────────────────
+  lint:
+    name: Lint (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/${{ matrix.app }}
+
+      - name: Run ESLint
+        run: pnpm lint
+        working-directory: apps/${{ matrix.app }}
+
+  # ── Job 2: Type-check / Build ──────────────────────────────────
+  build:
+    name: Build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: backend
+            build_cmd: pnpm run build
+          - app: frontend
+            build_cmd: pnpm run build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/${{ matrix.app }}
+
+      - name: Build
+        run: ${{ matrix.build_cmd }}
+        working-directory: apps/${{ matrix.app }}
+        env:
+          VITE_API_URL: http://localhost:5000   # placeholder for CI build check
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-dist
+          path: apps/${{ matrix.app }}/dist
+          retention-days: 1
+
+  # ── Job 3: Test ────────────────────────────────────────────────
+  test:
+    name: Test (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/${{ matrix.app }}/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/${{ matrix.app }}
+
+      - name: Run tests
+        run: pnpm test --if-present
+        working-directory: apps/${{ matrix.app }}
+
+  # ── Job 4: Docker build & push ─────────────────────────────────
+  docker:
+    name: Docker (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    needs: [build, test]
+    # only push on main branch, not on PRs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: backend
+            image: ${{ github.repository_owner }}/collabdocs-backend
+            context: ./apps/backend
+          - app: frontend
+            image: ${{ github.repository_owner }}/collabdocs-frontend
+            context: ./apps/frontend
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ matrix.image }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}

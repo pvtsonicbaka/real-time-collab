@@ -1,50 +1,124 @@
 import express from "express";
 import dotenv from "dotenv";
-import { connectDB } from "./config/db";
-import authRoutes from "./routes/auth";
-import documentRoutes from "./routes/document";
-import { connectRedis } from "./config/redis";
 import http from "http";
-import { setupSocket } from "./sockets/socket";
 import { Server } from "socket.io";
-import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger";
+import { createAdapter } from "@socket.io/redis-adapter";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import swaggerUi from "swagger-ui-express";
+
+import { protect } from "./middleware/auth";
+
+import { connectDB } from "./config/db";
+import { redisClient, connectRedis } from "./config/redis";
+import authRoutes from "./routes/auth";
+import documentRoutes from "./routes/document";
+import { setupSocket } from "./sockets/socket";
+import { swaggerSpec } from "./config/swagger";
+import { startEmailWorker } from "./workers/emailWorker";
 
 dotenv.config();
 
-const app = express();
+async function boot() {
+  // 1. connect DB and Redis first
+  await connectDB();
+  await connectRedis();
 
-connectDB(); // 👈 THIS IS IMPORTANT
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-}));
-app.use(express.json());
-app.use(cookieParser());
+  // 2. create sub client (duplicate of pub client)
+  const subClient = redisClient.duplicate();
+  await subClient.connect();
 
-app.use("/api/auth", authRoutes); // THIS LINE
-app.use("/api/documents", documentRoutes);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  // 3. express app
+  const app = express();
 
-connectRedis();
+  // security headers
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // disabled — frontend handles CSP
+  }));
 
-app.get("/test", (req, res) => {
-  res.send("Server running 🚀");
-});
-
-const server = http.createServer(app); // wraps express
-// socket server
-const io = new Server(server, {
-  cors: {
-    origin: "http://localhost:5173",
+  // strict CORS
+  app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
-  },
-});
-setupSocket(io);
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }));
 
+  // global rate limit — 100 requests per 15 min per IP
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please try again later." },
+  });
 
-server.listen(5000, () => {
-  console.log("Server running on port 5000");
+  // strict limit for auth routes — 10 attempts per 15 min
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many login attempts, please try again later." },
+  });
+
+  app.use(globalLimiter);
+  app.use(express.json({ limit: "1mb" }));
+  app.use(cookieParser());
+
+  app.use("/api/auth", authLimiter, authRoutes);
+  app.use("/api/documents", documentRoutes);
+  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.get("/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
+
+  app.get("/metrics", protect, async (_req, res) => {
+    const mem = process.memoryUsage();
+    const [dbStatus, redisStatus] = await Promise.all([
+      import("mongoose").then(m => m.default.connection.readyState === 1 ? "connected" : "disconnected"),
+      redisClient.ping().then(() => "connected").catch(() => "disconnected"),
+    ]);
+    res.json({
+      status: "ok",
+      uptime_seconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      memory: {
+        heap_used_mb: (mem.heapUsed / 1024 / 1024).toFixed(2),
+        heap_total_mb: (mem.heapTotal / 1024 / 1024).toFixed(2),
+        rss_mb: (mem.rss / 1024 / 1024).toFixed(2),
+      },
+      services: {
+        mongodb: dbStatus,
+        redis: redisStatus,
+      },
+      socket_rooms: io.sockets.adapter.rooms.size,
+      connected_clients: io.sockets.sockets.size,
+      node_version: process.version,
+      env: process.env.NODE_ENV || "development",
+    });
+  });
+
+  // 4. socket.io with Redis adapter
+  const server = http.createServer(app);
+  const io = new Server(server, {
+    cors: { origin: process.env.CLIENT_URL || "http://localhost:5173", credentials: true },
+  });
+
+  // pub = redisClient, sub = subClient
+  io.adapter(createAdapter(redisClient, subClient));
+  console.log("Socket.io Redis adapter attached ✅");
+
+  setupSocket(io);
+
+  // start email worker
+  startEmailWorker();
+
+  server.listen(5000, () => console.log("Server running on port 5000 🚀"));
+}
+
+boot().catch((err) => {
+  console.error("Boot failed:", err);
+  process.exit(1);
 });

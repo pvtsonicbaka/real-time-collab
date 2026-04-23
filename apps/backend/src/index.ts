@@ -40,6 +40,8 @@ async function boot() {
 
   // strict CORS
   const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").trim().replace(/[\r\n\t]/g, "");
+  console.log("CLIENT_URL raw:", JSON.stringify(process.env.CLIENT_URL));
+  console.log("CLIENT_URL sanitized:", JSON.stringify(clientUrl));
   app.use(cors({
     origin: clientUrl,
     credentials: true,

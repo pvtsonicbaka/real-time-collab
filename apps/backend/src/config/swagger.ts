@@ -8,7 +8,7 @@ const options: swaggerJsdoc.Options = {
       version: "1.0.0",
       description: "API documentation for the Real Time Collaboration project",
     },
-    servers: [{ url: "http://localhost:5000" }],
+    servers: [{ url: process.env.NODE_ENV === "production" ? process.env.RENDER_EXTERNAL_URL || "https://your-backend.onrender.com" : "http://localhost:5000" }],
     components: {
       securitySchemes: {
         bearerAuth: {

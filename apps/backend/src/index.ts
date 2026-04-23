@@ -39,8 +39,9 @@ async function boot() {
   }));
 
   // strict CORS
+  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").trim().replace(/[\r\n\t]/g, "");
   app.use(cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: clientUrl,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -83,7 +84,7 @@ async function boot() {
   // 4. socket.io with Redis adapter
   const server = http.createServer(app);
   const io = new Server(server, {
-    cors: { origin: process.env.CLIENT_URL || "http://localhost:5173", credentials: true },
+    cors: { origin: clientUrl, credentials: true },
   });
 
   // pub = redisClient, sub = subClient

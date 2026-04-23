@@ -105,6 +105,7 @@ export default function EditorPage() {
     if (!id) return;
     const socket = io(SOCKET_URL, {
       withCredentials: true,
+      transports: ["polling", "websocket"],
       reconnection: true,
       reconnectionDelay: 5000,
       reconnectionAttempts: Infinity,

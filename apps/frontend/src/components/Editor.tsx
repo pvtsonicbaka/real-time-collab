@@ -172,7 +172,7 @@ export default memo(function Editor({
       }
     },
     editorProps: {
-      handleClick(view, _pos, event) {
+      handleClick(_view, _pos, event) {
         const target = event.target as HTMLElement;
         const el = target.closest("[data-comment-id]");
         const commentId = el?.getAttribute("data-comment-id");

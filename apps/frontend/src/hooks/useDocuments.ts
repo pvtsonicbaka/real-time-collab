@@ -14,7 +14,6 @@ const API = `${API_URL}/api/documents`;
 
 export function useDocuments(search = "") {
   const [docs, setDocs] = useState<Doc[]>([]);
-  const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const isFetching = useRef(false);
@@ -38,7 +37,6 @@ export function useDocuments(search = "") {
 
   // reset and refetch when search changes
   useEffect(() => {
-    setPage(1);
     setDocs([]);
     setHasMore(true);
     fetchDocs(1, search);
@@ -46,12 +44,9 @@ export function useDocuments(search = "") {
 
   const loadMore = useCallback(() => {
     if (!hasMore || isFetching.current) return;
-    setPage((prev) => {
-      const next = prev + 1;
-      fetchDocs(next, search);
-      return next;
-    });
-  }, [hasMore, fetchDocs, search]);
+    const next = (docs.length / 10 | 0) + 1;
+    fetchDocs(next, search);
+  }, [hasMore, fetchDocs, search, docs.length]);
 
   const addDoc = (doc: Doc) => setDocs((prev) => [doc, ...prev]);
   const removeDoc = (id: string) => setDocs((prev) => prev.filter((d) => d._id !== id));

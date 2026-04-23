@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { useDocuments } from "../hooks/useDocuments";
-import { useThemeStore, themes, type Theme } from "../store/themeStore";
+import { useThemeStore, themes } from "../store/themeStore";
 import CreateDocModal from "../components/CreateDocModal";
 import { API_URL } from "../utils/api";
 

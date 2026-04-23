@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import * as Y from "yjs";
 import { io, Socket } from "socket.io-client";
@@ -73,7 +73,7 @@ export default function EditorPage() {
 
   const ydocRef = useRef<Y.Doc>(new Y.Doc());
   const socketRef = useRef<Socket | null>(null);
-  const handleUpdateRef = useRef<(update: Uint8Array, origin: any) => void>();
+  const handleUpdateRef = useRef<(update: Uint8Array, origin: any) => void>(undefined);
   const accessStateRef = useRef<AccessState>("loading");
   const requestSentRef = useRef<string | null>(null);
   const requestedRoleRef = useRef<"editor" | "viewer">("editor");
@@ -346,7 +346,7 @@ export default function EditorPage() {
   }, [id, accessState]);
 
   const handleAddComment = async (body: string, anchorText: string) => {
-    const { from, to, text } = selectionRef.current;
+    const { text } = selectionRef.current;
     const resolvedAnchor = anchorText || text;
     const res = await fetch(`${API_URL}/api/documents/${id}/comments`, {
       method: "POST",

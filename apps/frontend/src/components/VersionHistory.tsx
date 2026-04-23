@@ -5,6 +5,7 @@ export interface Version {
   _id: string;
   label: string;
   isManual: boolean;
+  content: string;
   savedBy: { name: string } | null;
   createdAt: string;
 }

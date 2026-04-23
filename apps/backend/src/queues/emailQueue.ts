@@ -1,5 +1,4 @@
 import { Queue } from "bullmq";
-import { redisClient } from "../config/redis";
 
 export interface EmailJob {
   to: string;
@@ -7,20 +6,32 @@ export interface EmailJob {
   html: string;
 }
 
-// BullMQ needs a plain ioredis-compatible connection config, not the node-redis client
-// so we pass the connection options directly
-const connection = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: parseInt(process.env.REDIS_PORT || "6379"),
-};
+function getBullMQConnection() {
+  const url = process.env.REDIS_URL;
+  if (url) {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port || "6379"),
+      password: parsed.password || undefined,
+      tls: parsed.protocol === "rediss:" ? {} : undefined,
+    };
+  }
+  return {
+    host: process.env.REDIS_HOST || "localhost",
+    port: parseInt(process.env.REDIS_PORT || "6379"),
+  };
+}
+
+const connection = getBullMQConnection();
 
 export const emailQueue = new Queue<EmailJob>("emails", {
   connection,
   defaultJobOptions: {
-    attempts: 3,                          // retry up to 3 times on failure
-    backoff: { type: "exponential", delay: 2000 }, // wait 2s, 4s, 8s between retries
-    removeOnComplete: 100,                // keep last 100 completed jobs
-    removeOnFail: 50,                     // keep last 50 failed jobs
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: 100,
+    removeOnFail: 50,
   },
 });
 

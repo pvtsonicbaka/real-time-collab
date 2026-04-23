@@ -6,7 +6,6 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 
 import { protect } from "./middleware/auth";
@@ -47,29 +46,10 @@ async function boot() {
     allowedHeaders: ["Content-Type", "Authorization"],
   }));
 
-  // global rate limit — 100 requests per 15 min per IP
-  const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Too many requests, please try again later." },
-  });
-
-  // strict limit for auth routes — 10 attempts per 15 min
-  const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: "Too many login attempts, please try again later." },
-  });
-
-  app.use(globalLimiter);
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
-  app.use("/api/auth", authLimiter, authRoutes);
+  app.use("/api/auth", authRoutes);
   app.use("/api/documents", documentRoutes);
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.get("/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));

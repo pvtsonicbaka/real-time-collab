@@ -55,6 +55,45 @@ async function boot() {
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.get("/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
 
+  /**
+   * @swagger
+   * /health:
+   *   get:
+   *     summary: Service health check
+   *     tags: [Health]
+   *     security: []
+   *     responses:
+   *       200:
+   *         description: Service is healthy
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status: { type: string, example: ok }
+   *                 ts: { type: number }
+   */
+
+  /**
+   * @swagger
+   * /metrics:
+   *   get:
+   *     summary: Service metrics (auth required)
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: Memory, uptime, DB/Redis status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status: { type: string }
+   *                 uptime_seconds: { type: number }
+   *                 memory: { type: object }
+   *                 services: { type: object }
+   *                 connected_clients: { type: number }
+   */
   app.get("/metrics", protect, async (_req, res) => {
     const mem = process.memoryUsage();
     const [dbStatus, redisStatus] = await Promise.all([

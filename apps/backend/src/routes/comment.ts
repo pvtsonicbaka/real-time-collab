@@ -28,6 +28,35 @@ const broadcast = (documentId: string, event: string, data: any) => {
   try { getIO().to(documentId).emit(event, data); } catch {}
 };
 
+/**
+ * @swagger
+ * tags:
+ *   name: Comments
+ *   description: Inline threaded comments on documents
+ */
+
+/**
+ * @swagger
+ * /api/documents/{id}/comments:
+ *   get:
+ *     summary: List all comments for a document
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Array of comments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Comment' }
+ *       403: { description: Not allowed }
+ *       404: { description: Document not found }
+ */
 // GET all comments for a doc
 router.get("/", protect, async (req: any, res) => {
   try {
@@ -44,6 +73,36 @@ router.get("/", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/comments:
+ *   post:
+ *     summary: Add a comment to a document
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [body]
+ *             properties:
+ *               body: { type: string, example: "Great point!" }
+ *               anchorText: { type: string, example: "selected text" }
+ *               color: { type: string, example: "#6366f1" }
+ *     responses:
+ *       201:
+ *         description: Comment created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Comment' }
+ *       403: { description: Viewers cannot comment }
+ */
 // POST create comment (owner + editor only)
 router.post("/", protect, async (req: any, res) => {
   try {
@@ -90,6 +149,37 @@ router.post("/", protect, async (req: any, res) => {
     res.status(500).json({ message: "Error creating comment" });
   }
 });
+/**
+ * @swagger
+ * /api/documents/{id}/comments/{cId}/reply:
+ *   post:
+ *     summary: Reply to a comment
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [body]
+ *             properties:
+ *               body: { type: string, example: "I agree!" }
+ *     responses:
+ *       200:
+ *         description: Updated comment with reply
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Comment' }
+ */
 router.post("/:cId/reply", protect, async (req: any, res) => {
   try {
     const doc = await Document.findById(req.params.id);
@@ -115,6 +205,28 @@ router.post("/:cId/reply", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/comments/{cId}/resolve:
+ *   patch:
+ *     summary: Resolve a comment
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Comment resolved
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Comment' }
+ */
 // PATCH resolve
 router.patch("/:cId/resolve", protect, async (req: any, res) => {
   try {
@@ -140,6 +252,28 @@ router.patch("/:cId/resolve", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/comments/{cId}/reopen:
+ *   patch:
+ *     summary: Reopen a resolved comment
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Comment reopened
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Comment' }
+ */
 // PATCH reopen
 router.patch("/:cId/reopen", protect, async (req: any, res) => {
   try {
@@ -165,6 +299,25 @@ router.patch("/:cId/reopen", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/comments/{cId}:
+ *   delete:
+ *     summary: Delete a comment (owner or author only)
+ *     tags: [Comments]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Comment deleted }
+ *       403: { description: Not allowed }
+ */
 // DELETE comment
 router.delete("/:cId", protect, async (req: any, res) => {
   try {

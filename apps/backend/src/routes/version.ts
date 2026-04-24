@@ -9,6 +9,13 @@ const router: Router = express.Router({ mergeParams: true });
 
 const MAX_VERSIONS = 50;
 
+/**
+ * @swagger
+ * tags:
+ *   name: Versions
+ *   description: Document version history — auto-snapshots every 30s + manual save points
+ */
+
 const getUserRole = (doc: any, userId: string) => {
   if (doc.owner.toString() === userId) return "owner";
   const collab = doc.collaborators.find((c: any) => {
@@ -18,6 +25,26 @@ const getUserRole = (doc: any, userId: string) => {
   return collab ? collab.role : null;
 };
 
+/**
+ * @swagger
+ * /api/documents/{id}/versions:
+ *   get:
+ *     summary: List all versions for a document
+ *     tags: [Versions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Array of versions (newest first, max 50)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Version' }
+ */
 // LIST versions for a document (all roles)
 router.get("/", protect, async (req: any, res) => {
   try {
@@ -36,6 +63,29 @@ router.get("/", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/versions/{vId}:
+ *   get:
+ *     summary: Get a single version by ID
+ *     tags: [Versions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: vId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Version object
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Version' }
+ *       404: { description: Version not found }
+ */
 // GET single version content (all roles)
 router.get("/:vId", protect, async (req: any, res) => {
   try {
@@ -52,6 +102,32 @@ router.get("/:vId", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/versions:
+ *   post:
+ *     summary: Create a manual save point
+ *     tags: [Versions]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               label: { type: string, example: "Before major rewrite" }
+ *     responses:
+ *       201:
+ *         description: Version created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Version' }
+ *       403: { description: Viewers cannot save versions }
+ */
 // MANUAL save point (owner + editor only)
 router.post("/", protect, async (req: any, res) => {
   try {
@@ -80,6 +156,34 @@ router.post("/", protect, async (req: any, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/documents/{id}/versions/{vId}/restore:
+ *   post:
+ *     summary: Restore document to a previous version (owner only)
+ *     tags: [Versions]
+ *     description: Snapshots current content before restoring. Broadcasts doc-restored event to all connected users.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: vId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Document restored
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: "Restored" }
+ *                 content: { type: string }
+ *       403: { description: Only owner can restore }
+ */
 // RESTORE a version (owner only)
 router.post("/:vId/restore", protect, async (req: any, res) => {
   try {

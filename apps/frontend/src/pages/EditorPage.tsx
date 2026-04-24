@@ -131,7 +131,10 @@ export default function EditorPage() {
     });
 
     socket.on("cursor-update", (cursor: RemoteCursor) => {
-      setRemoteCursors((prev) => [...prev.filter((c) => c.socketId !== cursor.socketId), cursor]);
+      setRemoteCursors((prev) => {
+        const filtered = prev.filter((c) => c.socketId !== cursor.socketId);
+        return [...filtered, cursor];
+      });
       setOnlineUsers((prev) => {
         const me = prev.find((x) => x.socketId === "me")!;
         const others = prev.filter((x) => x.socketId !== "me" && x.socketId !== cursor.socketId);
@@ -395,7 +398,10 @@ export default function EditorPage() {
     // socket comment-deleted handles state
   };
 
+  const cursorThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleCursorMove = useCallback((position: number) => {
+    if (cursorThrottleRef.current) return;
+    cursorThrottleRef.current = setTimeout(() => { cursorThrottleRef.current = null; }, 50);
     socketRef.current?.emit("cursor-move", { documentId: id, position, name: myName, color: myColor });
   }, [id, myName, myColor]);
 

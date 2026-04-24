@@ -7,6 +7,8 @@ import CollaboratorsPanel, { type PendingRequest } from "../components/Collabora
 import VersionHistory, { type Version } from "../components/VersionHistory";
 import CommentsPanel, { type Comment } from "../components/CommentsPanel";
 import GuestUpgradeModal from "../components/GuestUpgradeModal";
+import ConfirmModal from "../components/ConfirmModal";
+import ShareModal from "../components/ShareModal";
 import { useAuthStore } from "../store/authStore";
 import { colorFromId } from "../utils/color";
 import { API_URL, SOCKET_URL } from "../utils/api";
@@ -42,6 +44,8 @@ export default function EditorPage() {
   const { user } = useAuthStore();
   const isGuest = !!user?.isGuest;
 
+  useEffect(() => { document.title = "CollabDocs — Dashboard"; }, []);
+
   const myColor = user?._id ? colorFromId(user._id) : "#6366f1";
   const myName = user?.name || "Anonymous";
 
@@ -64,6 +68,8 @@ export default function EditorPage() {
   const [showCollaborators, setShowCollaborators] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [previewVersion, setPreviewVersion] = useState<Version | null>(null);
+  const [restoreVersion, setRestoreVersion] = useState<Version | null>(null);
+  const [showShare, setShowShare] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
@@ -96,6 +102,7 @@ export default function EditorPage() {
         if (!data) return;
         setDoc(data);
         setAccessState(data.isOwner ? "owner" : "approved");
+        document.title = `${data.title} — CollabDocs`;
       });
   }, [id]);
 
@@ -332,13 +339,17 @@ export default function EditorPage() {
   };
 
   const handleRestore = async (version: Version) => {
-    if (!window.confirm("Restore this version? Your current content will be saved as a snapshot first.")) return;
+    setRestoreVersion(version);
+  };
+
+  const doRestore = async (version: Version) => {
     await fetch(`${API_URL}/api/documents/${id}/versions/${version._id}/restore`, {
       method: "POST",
       credentials: "include",
     });
     setPreviewVersion(null);
     setShowHistory(false);
+    setRestoreVersion(null);
   };
 
   // comments
@@ -515,7 +526,7 @@ export default function EditorPage() {
           )}
           <button style={styles.historyBtn} onClick={() => setShowHistory(true)}>🕐 History</button>
           {isOwner && (
-            <button style={styles.shareBtn} onClick={() => guardGuest("Sharing documents", () => { navigator.clipboard.writeText(window.location.href); alert("Link copied!"); })}>
+            <button style={styles.shareBtn} onClick={() => guardGuest("Sharing documents", () => setShowShare(true))}>
               Share 🔗
             </button>
           )}
@@ -529,6 +540,24 @@ export default function EditorPage() {
         <GuestUpgradeModal
           reason={guestUpgradeReason}
           onClose={() => setGuestUpgradeReason(null)}
+        />
+      )}
+
+      {restoreVersion && (
+        <ConfirmModal
+          title="Restore Version"
+          message="Your current content will be saved as a snapshot first. Then the document will be restored to this version."
+          confirmLabel="Restore"
+          onConfirm={() => doRestore(restoreVersion)}
+          onCancel={() => setRestoreVersion(null)}
+        />
+      )}
+
+      {showShare && doc && (
+        <ShareModal
+          url={window.location.href}
+          docTitle={doc.title}
+          onClose={() => setShowShare(false)}
         />
       )}
 
@@ -569,8 +598,8 @@ export default function EditorPage() {
         </div>
       )}
 
-      <div style={styles.body}>
-        <div style={styles.editorCol}>
+      <div style={styles.body} className="editor-body">
+        <div style={styles.editorCol} className="editor-col">
           {previewVersion ? (
             <div
               style={styles.previewContent}

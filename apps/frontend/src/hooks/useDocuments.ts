@@ -27,8 +27,8 @@ export function useDocuments(search = "") {
       if (q.trim()) params.set("search", q.trim());
       const res = await fetch(`${API}?${params}`, { credentials: "include" });
       const data = await res.json();
-      setDocs((prev) => pageNum === 1 ? data.docs : [...prev, ...data.docs]);
-      setHasMore(data.hasMore);
+      setDocs((prev) => pageNum === 1 ? (data.docs ?? []) : [...prev, ...(data.docs ?? [])]);
+      setHasMore(data.hasMore ?? false);
     } finally {
       setLoading(false);
       isFetching.current = false;

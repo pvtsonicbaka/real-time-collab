@@ -4,12 +4,15 @@ import { useAuthStore } from "../store/authStore";
 import { useDocuments } from "../hooks/useDocuments";
 import { useThemeStore, themes } from "../store/themeStore";
 import CreateDocModal from "../components/CreateDocModal";
+import ConfirmModal from "../components/ConfirmModal";
 import { API_URL } from "../utils/api";
 
 export default function Dashboard() {
   const { user, logout } = useAuthStore();
   const { theme, setTheme } = useThemeStore();
+  const isGuest = !!user?.isGuest;
   const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [restoredBanner, setRestoredBanner] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -18,6 +21,8 @@ export default function Dashboard() {
   const { docs, loading, hasMore, loadMore, addDoc, removeDoc } = useDocuments(search);
   const loaderRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = "CollabDocs — Dashboard"; }, []);
 
   const handleSearchChange = (val: string) => {
     setSearchInput(val);
@@ -51,17 +56,18 @@ export default function Dashboard() {
       credentials: "include",
     });
     removeDoc(id);
+    setDeleteId(null);
   };
 
   const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="dashboard-page">
       {/* Sidebar */}
-      <aside style={s.sidebar}>
+      <aside style={s.sidebar} className="sidebar-responsive">
         <div style={s.sidebarTop}>
           <div style={s.brand}>
-            <div style={s.brandLogo}>C</div>
+            <img src="/logo1.jpg" alt="CollabDocs" style={s.brandLogo} />
             <span style={s.brandName}>CollabDocs</span>
           </div>
 
@@ -69,7 +75,7 @@ export default function Dashboard() {
             <div style={s.avatar}>{user?.name?.[0]?.toUpperCase()}</div>
             <div style={s.userInfo}>
               <p style={s.userName}>{user?.name}</p>
-              <p style={s.userEmail}>{user?.email}</p>
+              <p style={s.userEmail}>{user?.isGuest ? "👤 Guest Account" : user?.email}</p>
             </div>
           </div>
 
@@ -112,10 +118,17 @@ export default function Dashboard() {
       </aside>
 
       {/* Main */}
-      <main style={s.main}>
+      <main style={s.main} className="dashboard-main">
         {restoredBanner && (
           <div style={s.restoredBanner}>
             🔄 The document was restored to a previous version. You can reopen it below.
+          </div>
+        )}
+
+        {isGuest && (
+          <div style={s.guestBanner}>
+            <span>👤 You're using a <strong>guest account</strong> — your data will be deleted in 2 hours.</span>
+            <button style={s.guestSignupBtn} onClick={() => navigate("/register")}>Create Free Account →</button>
           </div>
         )}
         <div style={s.topBar}>
@@ -150,7 +163,7 @@ export default function Dashboard() {
             {!search && <button style={s.newBtn} onClick={() => setShowModal(true)}>+ New Document</button>}
           </div>
         ) : (
-          <div style={s.grid}>
+          <div style={s.grid} className="docs-grid">
             {docs.map((doc) => {
               const isHovered = hoveredId === doc._id;
               const preview = stripHtml(doc.content);
@@ -167,6 +180,7 @@ export default function Dashboard() {
                   }}
                   onMouseEnter={() => setHoveredId(doc._id)}
                   onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => navigate(`/editor/${doc._id}`)}
                 >
                   {/* Card header */}
                   <div style={s.cardHeader}>
@@ -191,11 +205,11 @@ export default function Dashboard() {
                     <span style={s.wordCount}>{wordCount} words</span>
                     <div style={s.cardActions}>
                       {doc.owner === user?._id && (
-                        <button style={s.deleteBtn} onClick={() => handleDelete(doc._id)}>
+                        <button style={s.deleteBtn} onClick={(e) => { e.stopPropagation(); setDeleteId(doc._id); }}>
                           Delete
                         </button>
                       )}
-                      <button style={s.openBtn} onClick={() => navigate(`/editor/${doc._id}`)}>
+                      <button style={s.openBtn} onClick={(e) => { e.stopPropagation(); navigate(`/editor/${doc._id}`); }}>
                         Open →
                       </button>
                     </div>
@@ -213,6 +227,17 @@ export default function Dashboard() {
       {showModal && (
         <CreateDocModal onClose={() => setShowModal(false)} onCreated={addDoc} />
       )}
+
+      {deleteId && (
+        <ConfirmModal
+          title="Delete Document"
+          message="Are you sure you want to delete this document? This action cannot be undone."
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => handleDelete(deleteId)}
+          onCancel={() => setDeleteId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -224,7 +249,7 @@ const s: Record<string, React.CSSProperties> = {
   sidebar: { width: "260px", minWidth: "260px", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", padding: "24px 16px", gap: "auto", background: "var(--bg)" },
   sidebarTop: { display: "flex", flexDirection: "column", gap: "20px", flex: 1 },
   brand: { display: "flex", alignItems: "center", gap: "8px", padding: "0 8px" },
-  brandLogo: { width: "32px", height: "32px", borderRadius: "8px", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", fontWeight: 700 },
+  brandLogo: { width: "32px", height: "32px", borderRadius: "8px", objectFit: "cover" as const },
   brandName: { fontSize: "17px", fontWeight: 700, color: "var(--text-h)", letterSpacing: "-0.3px" },
   userBox: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", borderRadius: "8px", background: "var(--bg-subtle)", border: "1px solid var(--border)", cursor: "pointer" },
   avatar: { width: "34px", height: "34px", borderRadius: "50%", background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: 700, flexShrink: 0 },
@@ -275,6 +300,8 @@ const s: Record<string, React.CSSProperties> = {
 
   loadingText: { textAlign: "center", color: "var(--text)", fontSize: "13px", marginTop: "16px" },
   restoredBanner: { background: "#fef9c3", color: "#854d0e", border: "1px solid #fde68a", borderRadius: "8px", padding: "10px 16px", fontSize: "13px", marginBottom: "16px" },
+  guestBanner: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", background: "var(--accent-bg)", border: "1px solid var(--accent-border)", borderRadius: "8px", padding: "10px 16px", fontSize: "13px", color: "var(--accent)", marginBottom: "16px", flexWrap: "wrap" as const },
+  guestSignupBtn: { padding: "5px 14px", borderRadius: "6px", border: "none", background: "var(--accent)", color: "#fff", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: "var(--sans)", whiteSpace: "nowrap" as const },
   searchBox: { display: "flex", alignItems: "center", gap: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "8px", padding: "6px 10px", width: "220px" },
   searchIcon: { fontSize: "13px", flexShrink: 0 },
   searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", color: "var(--text-h)", fontSize: "13px", fontFamily: "var(--sans)" },

@@ -325,3 +325,82 @@ code {
   float: left;
   height: 0;
 }
+
+/* ── RESPONSIVE ── */
+
+/* Dashboard — hide sidebar on mobile, stack layout */
+@media (max-width: 768px) {
+
+  /* Dashboard layout */
+  .dashboard-page {
+    flex-direction: column !important;
+  }
+
+  /* Login / Register cards */
+  .auth-card {
+    margin: 16px !important;
+    padding: 24px !important;
+  }
+
+  /* Editor header — wrap on small screens */
+  .editor-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Editor body — stack editor + comments panel */
+  .editor-body {
+    flex-direction: column !important;
+  }
+
+  /* Comments panel full width on mobile */
+  .comments-panel {
+    width: 100% !important;
+    min-width: unset !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border) !important;
+    max-height: 300px !important;
+  }
+}
+
+/* Sidebar responsive — collapse on tablet */
+@media (max-width: 900px) {
+  /* Make sidebar narrower */
+  .sidebar-responsive {
+    width: 200px !important;
+    min-width: 200px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Hide sidebar completely, show as top bar */
+  .sidebar-responsive {
+    display: none !important;
+  }
+
+  .dashboard-main {
+    padding: 16px !important;
+  }
+
+  /* Single column grid on mobile */
+  .docs-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Login card full width */
+  .login-container {
+    padding: 16px !important;
+  }
+
+  /* Editor padding */
+  .editor-col {
+    padding: 16px !important;
+  }
+
+  /* Modals full width */
+  .modal-card {
+    margin: 16px !important;
+    width: calc(100% - 32px) !important;
+  }
+}

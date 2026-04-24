@@ -92,7 +92,7 @@ export default function CommentsPanel({
   };
 
   return (
-    <div style={s.panel}>
+    <div style={s.panel} className="comments-panel">
       {upgradeReason && (
         <GuestUpgradeModal
           reason={upgradeReason}

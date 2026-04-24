@@ -74,12 +74,17 @@ router.get("/", protect, async (req: any, res) => {
     };
 
     const filter = search
-      ? { ...base, $text: { $search: search } }
+      ? {
+          $and: [
+            base,
+            { title: { $regex: search, $options: "i" } },
+          ],
+        }
       : base;
 
     const [docs, total] = await Promise.all([
       Document.find(filter)
-        .sort(search ? { score: { $meta: "textScore" } } : { updatedAt: -1 })
+        .sort(search ? { updatedAt: -1 } : { updatedAt: -1 })
         .skip(skip)
         .limit(limit),
       Document.countDocuments(filter),

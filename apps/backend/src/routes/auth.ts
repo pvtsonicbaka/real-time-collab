@@ -9,6 +9,143 @@ const router: Router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           example: 64f1a2b3c4d5e6f7a8b9c0d1
+ *         name:
+ *           type: string
+ *           example: John Doe
+ *         email:
+ *           type: string
+ *           example: john@example.com
+ *         cursorColor:
+ *           type: string
+ *           example: "#6366f1"
+ *         isGuest:
+ *           type: boolean
+ *           example: false
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     Document:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           example: 64f1a2b3c4d5e6f7a8b9c0d2
+ *         title:
+ *           type: string
+ *           example: My Document
+ *         content:
+ *           type: string
+ *           example: "<p>Hello world</p>"
+ *         owner:
+ *           type: string
+ *           example: 64f1a2b3c4d5e6f7a8b9c0d1
+ *         collaborators:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [editor, viewer]
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     Comment:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         documentId:
+ *           type: string
+ *         authorId:
+ *           $ref: '#/components/schemas/User'
+ *         body:
+ *           type: string
+ *           example: Great point here!
+ *         anchorText:
+ *           type: string
+ *           example: selected text
+ *         color:
+ *           type: string
+ *           example: "#6366f1"
+ *         resolved:
+ *           type: boolean
+ *           example: false
+ *         replies:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               _id:
+ *                 type: string
+ *               authorId:
+ *                 $ref: '#/components/schemas/User'
+ *               body:
+ *                 type: string
+ *               createdAt:
+ *                 type: string
+ *                 format: date-time
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     Version:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *         documentId:
+ *           type: string
+ *         content:
+ *           type: string
+ *         savedBy:
+ *           $ref: '#/components/schemas/User'
+ *         label:
+ *           type: string
+ *           example: Before major edit
+ *         isManual:
+ *           type: boolean
+ *           example: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *     Error:
+ *       type: object
+ *       properties:
+ *         message:
+ *           type: string
+ *           example: Not found
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: Authentication — register, login, logout, refresh, guest
+ *   - name: Documents
+ *     description: Document CRUD, collaborators, invites
+ *   - name: Comments
+ *     description: Inline threaded comments
+ *   - name: Versions
+ *     description: Version history — auto-snapshots + manual save points
+ *   - name: Health
+ *     description: Health check and metrics
+ */
+
+/**
+ * @swagger
  * /api/auth/register:
  *   post:
  *     summary: Register a new user

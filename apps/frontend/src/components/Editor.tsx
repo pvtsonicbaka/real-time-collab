@@ -152,19 +152,7 @@ export default memo(function Editor({
   useEffect(() => { cursorsRef.current = remoteCursors; }, [remoteCursors]);
   useEffect(() => { activeIdRef.current = activeCommentId; }, [activeCommentId]);
 
-  // update cursor decorations without dispatching a transaction (avoids flicker)
   const rafRef = useRef<number>(0);
-  useEffect(() => {
-    cursorsRef.current = remoteCursors;
-    if (!editor) return;
-    cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      if (editor && !editor.isDestroyed) {
-        editor.view.dispatch(editor.view.state.tr.setMeta(cursorPluginKey, { update: true }));
-      }
-    });
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [remoteCursors, editor]);
 
   const editor = useEditor({
     extensions: [
@@ -210,6 +198,19 @@ export default memo(function Editor({
     if (!editor) return;
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
+
+  // update cursor decorations via rAF to avoid flicker on yjs updates
+  useEffect(() => {
+    cursorsRef.current = remoteCursors;
+    if (!editor) return;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.view.dispatch(editor.view.state.tr.setMeta(cursorPluginKey, { update: true }));
+      }
+    });
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [remoteCursors, editor]);
 
   useEffect(() => {
     if (!editor || !initialContent) return;

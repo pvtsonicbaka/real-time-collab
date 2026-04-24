@@ -72,10 +72,13 @@ const cursorPluginKey = new PluginKey("remoteCursors");
 function buildCursorPlugin(cursorsRef: React.MutableRefObject<RemoteCursor[]>) {
   return new Plugin({
     key: cursorPluginKey,
-    props: {
-      decorations(state) {
+    state: {
+      init() { return DecorationSet.empty; },
+      apply(tr, old, _oldState, newState) {
+        // only recompute when explicitly triggered or doc changed
+        if (!tr.getMeta(cursorPluginKey) && !tr.docChanged) return old;
         const decorations: Decoration[] = [];
-        const docSize = state.doc.content.size;
+        const docSize = newState.doc.content.size;
         cursorsRef.current.forEach((cursor) => {
           const pos = Math.min(Math.max(cursor.position, 0), docSize - 1);
           if (pos < 1) return;
@@ -93,8 +96,11 @@ function buildCursorPlugin(cursorsRef: React.MutableRefObject<RemoteCursor[]>) {
           }, { side: 1 });
           decorations.push(widget);
         });
-        return DecorationSet.create(state.doc, decorations);
+        return DecorationSet.create(newState.doc, decorations);
       },
+    },
+    props: {
+      decorations(state) { return this.getState(state) ?? DecorationSet.empty; },
     },
   });
 }
@@ -145,6 +151,20 @@ export default memo(function Editor({
 
   useEffect(() => { cursorsRef.current = remoteCursors; }, [remoteCursors]);
   useEffect(() => { activeIdRef.current = activeCommentId; }, [activeCommentId]);
+
+  // update cursor decorations without dispatching a transaction (avoids flicker)
+  const rafRef = useRef<number>(0);
+  useEffect(() => {
+    cursorsRef.current = remoteCursors;
+    if (!editor) return;
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.view.dispatch(editor.view.state.tr.setMeta(cursorPluginKey, { update: true }));
+      }
+    });
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [remoteCursors, editor]);
 
   const editor = useEditor({
     extensions: [
@@ -199,11 +219,6 @@ export default memo(function Editor({
       onContentLoaded?.();
     }
   }, [editor, initialContent]);
-
-  useEffect(() => {
-    if (!editor) return;
-    editor.view.dispatch(editor.view.state.tr.setMeta("cursorUpdate", true));
-  }, [remoteCursors]);
 
   useEffect(() => {
     if (!editor) return;
